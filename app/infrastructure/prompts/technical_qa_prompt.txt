@@ -1,0 +1,10 @@
+User query:
+{query}
+
+Retrieved context:
+{context}
+
+Task:
+Provide a grounded technical answer using only the retrieved context.
+If the context is insufficient, say:
+"Insufficient grounded context to provide a reliable answer."
