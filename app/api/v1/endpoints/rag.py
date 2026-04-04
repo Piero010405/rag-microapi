@@ -1,3 +1,6 @@
+"""
+Rag endpoints
+"""
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies import get_rag_service
@@ -17,6 +20,7 @@ async def retrieve_only(
     request: RetrieveRequest,
     rag_service: RAGService = Depends(get_rag_service),
 ) -> RetrieveResponse:
+    """Retrieve only endpoint"""
     return await rag_service.retrieve(
         query=request.query,
         top_k=request.top_k,
@@ -29,6 +33,7 @@ async def rag_query(
     request: QueryRequest,
     rag_service: RAGService = Depends(get_rag_service),
 ) -> QueryResponse:
+    """RAG query endpoint"""
     response = await rag_service.query(
         query=request.query,
         top_k=request.top_k,

@@ -1,3 +1,6 @@
+"""
+Debug endpoints
+"""
 from fastapi import APIRouter, Depends
 
 from app.api.dependencies import get_rag_service
@@ -13,6 +16,7 @@ async def rag_debug(
     request: QueryRequest,
     rag_service: RAGService = Depends(get_rag_service),
 ) -> DebugResponse:
+    """RAG debug endpoint"""
     return await rag_service.debug(
         query=request.query,
         top_k=request.top_k,

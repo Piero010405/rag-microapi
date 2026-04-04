@@ -1,3 +1,10 @@
+"""
+RAG Service is responsible for handling the core logic of the Retrieval-Augmented
+Generation (RAG) process, including retrieving relevant chunks from the vector
+database and generating answers using the language model based on the retrieved
+context. It also provides a debug method to return detailed information about the
+query processing for analysis and debugging purposes.
+"""
 from __future__ import annotations
 
 from app.core.config import Settings
@@ -12,6 +19,14 @@ from app.utils.timers import Timer
 
 
 class RAGService:
+    """
+    Rag Service orchestrates the retrieval of relevant chunks from the vector database
+    and the generation of answers using the language model. It provides methods for both
+    retrieval and generation, as well as a debug method that returns detailed information
+    about the query processing, including timings and configurations used. The service is
+    designed to be modular and easily testable, with clear separation of concerns between
+    retrieval and generation logic.
+    """
     def __init__(
         self,
         settings: Settings,
@@ -19,6 +34,9 @@ class RAGService:
         qdrant_client: QdrantSearchClient,
         gemini_client: GeminiClient,
     ) -> None:
+        """
+        Initializes the RAGService with the necessary clients and settings.
+        """
         self.settings = settings
         self.voyage_client = voyage_client
         self.qdrant_client = qdrant_client
@@ -30,20 +48,27 @@ class RAGService:
         top_k: int | None = None,
         score_threshold: float | None = None,
     ) -> RetrieveResponse:
+        """
+        Retrieves relevant chunks from the vector database based on the query embedding.
+        It uses the VoyageClient to generate the query embedding and the QdrantSearchClient 
+        to perform the search in the vector database. The method returns a RetrieveResponse 
+        containing the original query, the list of retrieved
+        """
         timer = Timer()
 
-        top_k = top_k or self.settings.default_top_k
-        score_threshold = (
+        effective_top_k = top_k or self.settings.default_top_k
+        effective_score_threshold = (
             score_threshold
             if score_threshold is not None
             else self.settings.default_score_threshold
         )
 
         query_embedding = await self.voyage_client.embed_query(query)
+
         raw_chunks = await self.qdrant_client.search(
             vector=query_embedding,
-            top_k=top_k,
-            score_threshold=score_threshold,
+            top_k=effective_top_k,
+            score_threshold=effective_score_threshold,
         )
 
         chunks = [
@@ -51,6 +76,8 @@ class RAGService:
                 chunk_id=item["chunk_id"],
                 text=item["text"],
                 score=item["score"],
+                source_file=item["source_file"],
+                chunk_index=item["chunk_index"],
                 metadata=item["metadata"],
             )
             for item in raw_chunks
@@ -59,8 +86,9 @@ class RAGService:
         metadata = QueryMetadata(
             model=self.settings.gemini_model,
             embedding_model=self.settings.voyage_model,
-            top_k=top_k,
-            score_threshold=score_threshold,
+            qdrant_collection=self.settings.qdrant_collection,
+            top_k=effective_top_k,
+            score_threshold=effective_score_threshold,
             latency_ms=timer.elapsed_ms(),
         )
 
@@ -78,7 +106,12 @@ class RAGService:
         temperature: float | None = None,
         max_output_tokens: int | None = None,
     ) -> QueryResponse:
-        timer = Timer()
+        """
+        Queries the RAG system by first retrieving relevant chunks based on the query and then 
+        generating an answer using the Gemini language model. The method constructs a prompt 
+        using the retrieved chunks
+        """
+        total_timer = Timer()
 
         retrieve_response = await self.retrieve(
             query=query,
@@ -92,10 +125,10 @@ class RAGService:
         context = self._build_context(retrieve_response.retrieved_chunks)
         final_prompt = qa_prompt_template.format(query=query, context=context)
 
-        temperature = (
+        effective_temperature = (
             temperature if temperature is not None else self.settings.default_temperature
         )
-        max_output_tokens = (
+        effective_max_output_tokens = (
             max_output_tokens
             if max_output_tokens is not None
             else self.settings.default_max_output_tokens
@@ -104,8 +137,8 @@ class RAGService:
         answer = await self.gemini_client.generate(
             system_prompt=system_prompt,
             user_prompt=final_prompt,
-            temperature=temperature,
-            max_output_tokens=max_output_tokens,
+            temperature=effective_temperature,
+            max_output_tokens=effective_max_output_tokens,
         )
 
         sources = self._build_sources(retrieve_response.retrieved_chunks)
@@ -113,9 +146,10 @@ class RAGService:
         metadata = QueryMetadata(
             model=self.settings.gemini_model,
             embedding_model=self.settings.voyage_model,
+            qdrant_collection=self.settings.qdrant_collection,
             top_k=retrieve_response.metadata.top_k,
             score_threshold=retrieve_response.metadata.score_threshold,
-            latency_ms=timer.elapsed_ms(),
+            latency_ms=total_timer.elapsed_ms(),
         )
 
         return QueryResponse(
@@ -134,9 +168,19 @@ class RAGService:
         temperature: float | None = None,
         max_output_tokens: int | None = None,
     ) -> DebugResponse:
+        """
+        Debug method that processes the query through the RAG system and returns a 
+        DebugResponse containing detailed information about the query processing, 
+        including the prompt used, retrieved chunks, generated answer, timings for 
+        retrieval and generation, and the configurations used. This method is useful 
+        for analyzing the behavior of the RAG system and understanding how different 
+        parameters affect the results. It provides insights into the internal workings 
+        of the retrieval and generation steps, making it easier to identify potential 
+        issues and optimize the system.
+        """
         total_timer = Timer()
-        retrieval_timer = Timer()
 
+        retrieval_timer = Timer()
         retrieve_response = await self.retrieve(
             query=query,
             top_k=top_k,
@@ -149,11 +193,13 @@ class RAGService:
         context = self._build_context(retrieve_response.retrieved_chunks)
         final_prompt = qa_prompt_template.format(query=query, context=context)
 
+        default = self.settings.default_temperature
+
         generation_timer = Timer()
         answer = await self.gemini_client.generate(
             system_prompt=system_prompt,
             user_prompt=final_prompt,
-            temperature=temperature if temperature is not None else self.settings.default_temperature,
+            temperature = temperature if temperature is not None else default,
             max_output_tokens=max_output_tokens
             if max_output_tokens is not None
             else self.settings.default_max_output_tokens,
@@ -172,11 +218,13 @@ class RAGService:
                 "total_ms": total_timer.elapsed_ms(),
             },
             config_used={
+                "qdrant_url": self.settings.qdrant_url,
                 "qdrant_collection": self.settings.qdrant_collection,
                 "embedding_model": self.settings.voyage_model,
                 "generation_model": self.settings.gemini_model,
                 "default_top_k": self.settings.default_top_k,
                 "default_score_threshold": self.settings.default_score_threshold,
+                "default_temperature": self.settings.default_temperature,
             },
         )
 
@@ -186,27 +234,23 @@ class RAGService:
 
         parts: list[str] = []
         for idx, chunk in enumerate(chunks, start=1):
-            title = chunk.metadata.get("document_title", "Unknown document")
-            section = chunk.metadata.get("section", "Unknown section")
-            page = chunk.metadata.get("page", "N/A")
             parts.append(
-                f"[Chunk {idx}] Source: {title} | Section: {section} | Page: {page}\n"
+                f"[Chunk {idx}] Source file: {chunk.source_file} | "
+                f"Chunk index: {chunk.chunk_index}\n"
                 f"{chunk.text}"
             )
         return "\n\n".join(parts)
 
     def _build_sources(self, chunks: list[RetrievedChunk]) -> list[SourceReference]:
-        sources: list[SourceReference] = []
-        for chunk in chunks:
-            md = chunk.metadata
-            sources.append(
-                SourceReference(
-                    document_id=md.get("document_id", "unknown"),
-                    document_title=md.get("document_title", "Unknown document"),
-                    chunk_id=chunk.chunk_id,
-                    score=chunk.score,
-                    section=md.get("section"),
-                    page=md.get("page"),
-                )
+        return [
+            SourceReference(
+                source_file=chunk.source_file,
+                chunk_index=chunk.chunk_index,
+                chunk_id=chunk.chunk_id,
+                score=chunk.score,
+                document_title=None,
+                section=None,
+                page=None,
             )
-        return sources
+            for chunk in chunks
+        ]

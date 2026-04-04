@@ -1,3 +1,6 @@
+"""
+Router module
+"""
 from fastapi import APIRouter
 
 from app.api.v1.endpoints.debug import router as debug_router
