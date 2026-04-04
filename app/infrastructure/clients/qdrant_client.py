@@ -47,14 +47,16 @@ class QdrantSearchClient:
         returns a list of results with their associated metadata and similarity scores.
         """
         try:
-            results = await self.client.search(
+            response = await self.client.query_points(
                 collection_name=self.settings.qdrant_collection,
-                query_vector=vector,
+                query=vector,
                 limit=top_k,
                 score_threshold=score_threshold,
                 with_payload=True,
                 with_vectors=False,
             )
+
+            results = response.points
         except Exception as exc:
             raise RetrievalError(f"Qdrant search failed: {exc}") from exc
 
@@ -66,8 +68,8 @@ class QdrantSearchClient:
             text = payload.get("text", "")
             source_file = payload.get("source_file", "unknown")
             chunk_index = payload.get("chunk_index", -1)
-            chunk_id = f"{source_file}__{chunk_index}"
             chunk_index_value = int(chunk_index) if isinstance(chunk_index, (int, float)) else -1
+            chunk_id = f"{source_file}__{chunk_index}"
 
             parsed_results.append(
                 {
