@@ -1,10 +1,23 @@
+"""
+Exceptions for the application, defining custom exceptions for various error scenarios.
+"""
 class ExternalServiceError(Exception):
-    """Raised when an external provider fails."""
+    """Exception raised when an external service 
+    (e.g., LLM provider, vector database) returns an error.
+    """
+    pass
 
 
 class RetrievalError(Exception):
-    """Raised when retrieval pipeline fails."""
+    """Exception raised when retrieval pipeline fails."""
+    pass
 
 
 class GenerationError(Exception):
-    """Raised when generation pipeline fails."""
+    """Exception raised when generation pipeline fails."""
+    pass
+
+
+class ConfigurationError(Exception):
+    """Exception raised when there is a configuration error."""
+    pass
