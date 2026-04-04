@@ -6,5 +6,9 @@ Retrieved context:
 
 Task:
 Provide a grounded technical answer using only the retrieved context.
-If the context is insufficient, say:
-"Insufficient grounded context to provide a reliable answer."
+
+Response policy:
+- If the evidence is sufficient, answer precisely and conservatively.
+- If the evidence is weak, incomplete, or absent, answer exactly:
+  "Insufficient grounded context to provide a reliable answer."
+- Do not fabricate metadata that is not present in the context.
