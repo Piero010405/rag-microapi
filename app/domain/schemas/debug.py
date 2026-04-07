@@ -5,7 +5,7 @@ each step of the process. This schema is useful for debugging and analyzing
 the performance of the RAG system.
 """
 from pydantic import BaseModel
-from app.domain.schemas.common import RetrievedChunk
+from app.domain.schemas.common import DebugRetrievedChunk
 
 
 class DebugResponse(BaseModel):
@@ -24,7 +24,7 @@ class DebugResponse(BaseModel):
     """
     query: str
     prompt_used: str
-    retrieved_chunks: list[RetrievedChunk]
+    retrieved_chunks: list[DebugRetrievedChunk]
     final_context: str
     generated_answer: str
     timings_ms: dict

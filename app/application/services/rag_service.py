@@ -8,7 +8,11 @@ query processing for analysis and debugging purposes.
 from __future__ import annotations
 
 from app.core.config import Settings
-from app.domain.schemas.common import RetrievedChunk, SourceReference
+from app.domain.schemas.common import (
+    DebugRetrievedChunk,
+    RetrievedChunk,
+    SourceReference,
+)
 from app.domain.schemas.debug import DebugResponse
 from app.domain.schemas.rag import QueryMetadata, QueryResponse, RetrieveResponse
 from app.infrastructure.clients.gemini_client import GeminiClient
@@ -34,9 +38,6 @@ class RAGService:
         qdrant_client: QdrantSearchClient,
         gemini_client: GeminiClient,
     ) -> None:
-        """
-        Initializes the RAGService with the necessary clients and settings.
-        """
         self.settings = settings
         self.voyage_client = voyage_client
         self.qdrant_client = qdrant_client
@@ -78,7 +79,6 @@ class RAGService:
                 score=item["score"],
                 source_file=item["source_file"],
                 chunk_index=item["chunk_index"],
-                metadata=item["metadata"],
             )
             for item in raw_chunks
         ]
@@ -105,6 +105,7 @@ class RAGService:
         score_threshold: float | None = None,
         temperature: float | None = None,
         max_output_tokens: int | None = None,
+        include_sources_in_answer: bool = True,
     ) -> QueryResponse:
         """
         Queries the RAG system by first retrieving relevant chunks based on the query and then 
@@ -123,7 +124,20 @@ class RAGService:
         qa_prompt_template = load_prompt("technical_qa_prompt.txt")
 
         context = self._build_context(retrieve_response.retrieved_chunks)
-        final_prompt = qa_prompt_template.format(query=query, context=context)
+        citation_instruction = (
+            "You may mention source file names when relevant."
+            if include_sources_in_answer
+            else (
+                "Do not mention source file names, chunk indices, "
+                "or internal references in the answer."
+            )
+        )
+
+        final_prompt = qa_prompt_template.format(
+            query=query,
+            context=context,
+            citation_instruction=citation_instruction,
+        )
 
         effective_temperature = (
             temperature if temperature is not None else self.settings.default_temperature
@@ -188,18 +202,41 @@ class RAGService:
         )
         retrieval_ms = retrieval_timer.elapsed_ms()
 
+        raw_chunks = await self.qdrant_client.search(
+            vector=await self.voyage_client.embed_query(query),
+            top_k=top_k or self.settings.default_top_k,
+            score_threshold=score_threshold
+            if score_threshold is not None
+            else self.settings.default_score_threshold,
+        )
+
+        debug_chunks = [
+            DebugRetrievedChunk(
+                chunk_id=item["chunk_id"],
+                text=item["text"],
+                score=item["score"],
+                source_file=item["source_file"],
+                chunk_index=item["chunk_index"],
+                metadata=item["metadata"],
+            )
+            for item in raw_chunks
+        ]
+
         system_prompt = load_prompt("system_prompt.txt")
         qa_prompt_template = load_prompt("technical_qa_prompt.txt")
         context = self._build_context(retrieve_response.retrieved_chunks)
-        final_prompt = qa_prompt_template.format(query=query, context=context)
+        final_prompt = qa_prompt_template.format(
+            query=query,
+            context=context,
+            citation_instruction="You may mention source file names when relevant.",
+        )
 
         default = self.settings.default_temperature
-
         generation_timer = Timer()
         answer = await self.gemini_client.generate(
             system_prompt=system_prompt,
             user_prompt=final_prompt,
-            temperature = temperature if temperature is not None else default,
+            temperature=temperature if temperature is not None else default,
             max_output_tokens=max_output_tokens
             if max_output_tokens is not None
             else self.settings.default_max_output_tokens,
@@ -209,7 +246,7 @@ class RAGService:
         return DebugResponse(
             query=query,
             prompt_used=f"{system_prompt}\n\n---\n\n{final_prompt}",
-            retrieved_chunks=retrieve_response.retrieved_chunks,
+            retrieved_chunks=debug_chunks,
             final_context=context,
             generated_answer=answer,
             timings_ms={
@@ -248,9 +285,6 @@ class RAGService:
                 chunk_index=chunk.chunk_index,
                 chunk_id=chunk.chunk_id,
                 score=chunk.score,
-                document_title=None,
-                section=None,
-                page=None,
             )
             for chunk in chunks
         ]

@@ -20,7 +20,10 @@ async def retrieve_only(
     request: RetrieveRequest,
     rag_service: RAGService = Depends(get_rag_service),
 ) -> RetrieveResponse:
-    """Retrieve only endpoint"""
+    """
+    Endpoint for retrieving relevant chunks from the vector database based on the query
+    embedding.
+    """
     return await rag_service.retrieve(
         query=request.query,
         top_k=request.top_k,
@@ -33,13 +36,16 @@ async def rag_query(
     request: QueryRequest,
     rag_service: RAGService = Depends(get_rag_service),
 ) -> QueryResponse:
-    """RAG query endpoint"""
+    """
+    Endpoint for querying the RAG system with a user question.
+    """
     response = await rag_service.query(
         query=request.query,
         top_k=request.top_k,
         score_threshold=request.score_threshold,
         temperature=request.temperature,
         max_output_tokens=request.max_output_tokens,
+        include_sources_in_answer=request.include_sources,
     )
 
     if not request.include_sources:

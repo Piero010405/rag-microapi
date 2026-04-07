@@ -12,3 +12,8 @@ Response policy:
 - If the evidence is weak, incomplete, or absent, answer exactly:
   "Insufficient grounded context to provide a reliable answer."
 - Do not fabricate metadata that is not present in the context.
+- Answer only what directly addresses the user's question.
+- Do not broaden the scope unnecessarily.
+
+Citation policy:
+{citation_instruction}

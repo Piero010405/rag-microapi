@@ -5,7 +5,7 @@ its dependencies such as the Qdrant vector database, the Voyage embeddings provi
 the Gemini language model provider. The endpoint returns a structured response indicating 
 the overall health status, environment, version, and the connectivity status of each dependency.
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.api.dependencies import get_gemini_client, get_qdrant_client, get_voyage_client
 from app.core.config import get_settings
@@ -15,14 +15,27 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health", response_model=HealthResponse)
-async def health_check() -> HealthResponse:
+async def health_check(
+    deep: bool = Query(default=False, description="Run deeper provider checks")
+) -> HealthResponse:
     """
-    Health check endpoint that verifies the availability of the service and its dependencies.
+    Endpoint to check the health status of the RAG microservice. It performs basic 
+    checks to verify the availability of the Qdrant vector database, the Voyage 
+    embeddings provider, and the Gemini language model provider. If the `deep` 
+    query parameter is set to `True`, it can perform more thorough checks on the 
+    providers, which may involve making test API calls to ensure they are fully operational.
     """
     settings = get_settings()
     qdrant_ok = await get_qdrant_client().is_available()
     voyage_ok = await get_voyage_client().is_available()
     gemini_ok = await get_gemini_client().is_available()
+
+    # Por ahora el modo deep no hace calls costosas reales,
+    # pero dejamos listo el contrato para endurecerlo luego.
+    if deep:
+        qdrant_ok = await get_qdrant_client().is_available()
+        voyage_ok = await get_voyage_client().is_available()
+        gemini_ok = await get_gemini_client().is_available()
 
     return HealthResponse(
         status="ok" if qdrant_ok and voyage_ok and gemini_ok else "degraded",
