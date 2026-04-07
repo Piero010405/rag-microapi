@@ -22,7 +22,7 @@ def register_exception_handlers(app: FastAPI) -> None:
     """
     @app.exception_handler(AppBaseError)
     async def handle_app_base_error(request: Request, exc: AppBaseError) -> JSONResponse:
-        logger.exception("Application error: %s", exc.message)
+        logger.error("Application error: %s", exc.message)
         return JSONResponse(
             status_code=exc.status_code,
             content={
@@ -33,7 +33,7 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(ValidationError)
     async def handle_validation_error(request: Request, exc: ValidationError) -> JSONResponse:
-        logger.exception("Validation error: %s", str(exc))
+        logger.warning("Validation error: %s", str(exc))
         return JSONResponse(
             status_code=422,
             content={
