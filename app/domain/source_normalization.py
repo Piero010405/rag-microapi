@@ -18,9 +18,26 @@ SOURCE_STANDARD_MAP = {
 }
 
 
-def infer_applicable_standard_from_sources(sources: list[dict]) -> str:
+def infer_applicable_standard_from_sources(sources) -> str:
+    """
+    Infer applicable standard from the list of sources. The function checks the first source in the 
+    list and uses the SOURCE_STANDARD_MAP to determine the standardized name of the source document. 
+    If the first source is not found in the mapping, it returns "unknown". This function is useful 
+    for quickly identifying the relevant standard based on the provided sources, which can help 
+    in ensuring that the correct guidelines and requirements are applied during analysis and reporting.
+    """
     if not sources:
         return "unknown"
 
-    first_source = sources[0].get("source_file", "")
+    first_source_obj = sources[0]
+
+    # Caso 1: objeto Pydantic / clase con atributo source_file
+    if hasattr(first_source_obj, "source_file"):
+        first_source = first_source_obj.source_file
+    # Caso 2: dict normal
+    elif isinstance(first_source_obj, dict):
+        first_source = first_source_obj.get("source_file", "")
+    else:
+        first_source = ""
+
     return SOURCE_STANDARD_MAP.get(first_source, "unknown")
