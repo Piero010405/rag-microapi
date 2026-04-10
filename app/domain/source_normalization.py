@@ -18,26 +18,36 @@ SOURCE_STANDARD_MAP = {
 }
 
 
-def infer_applicable_standard_from_sources(sources) -> str:
+def infer_applicable_standard_from_sources(
+    sources,
+    recommended_standard_target: str | None = None,
+) -> str:
     """
-    Infer applicable standard from the list of sources. The function checks the first source in the 
-    list and uses the SOURCE_STANDARD_MAP to determine the standardized name of the source document. 
-    If the first source is not found in the mapping, it returns "unknown". This function is useful 
-    for quickly identifying the relevant standard based on the provided sources, which can help 
-    in ensuring that the correct guidelines and requirements are applied during analysis and reporting.
+    Infer the applicable standard from a list of sources. If a recommended standard target is provided,
+    it will be returned directly. Otherwise, the function will analyze the sources to determine the most
+    frequently occurring standardized name based on the SOURCE_STANDARD_MAP. If no sources are 
+    provided or if none of the sources match the mapping, it will return "unknown".
     """
+    if recommended_standard_target:
+        return recommended_standard_target
+
     if not sources:
         return "unknown"
 
-    first_source_obj = sources[0]
+    counts: dict[str, int] = {}
 
-    # Caso 1: objeto Pydantic / clase con atributo source_file
-    if hasattr(first_source_obj, "source_file"):
-        first_source = first_source_obj.source_file
-    # Caso 2: dict normal
-    elif isinstance(first_source_obj, dict):
-        first_source = first_source_obj.get("source_file", "")
-    else:
-        first_source = ""
+    for src in sources:
+        if hasattr(src, "source_file"):
+            source_file = src.source_file
+        elif isinstance(src, dict):
+            source_file = src.get("source_file", "")
+        else:
+            source_file = ""
 
-    return SOURCE_STANDARD_MAP.get(first_source, "unknown")
+        normalized = SOURCE_STANDARD_MAP.get(source_file, "unknown")
+        counts[normalized] = counts.get(normalized, 0) + 1
+
+    if not counts:
+        return "unknown"
+
+    return max(counts.items(), key=lambda x: x[1])[0]

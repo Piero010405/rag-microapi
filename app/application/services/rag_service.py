@@ -415,16 +415,21 @@ class RAGService:
             standards_interpretation=standards_interpretation,
             recommendation=recommendation,
             grounding_strength=grounding_strength,
+            interpretation_basis=interpretation_basis,
         )
 
         recommended_action = infer_recommended_action(
             recommendation=recommendation,
             acceptability_status=acceptability_status,
             grounding_strength=grounding_strength,
+            interpretation_basis=interpretation_basis,
         )
 
         sources = self._build_sources(retrieve_response.retrieved_chunks)
-        applicable_standard = infer_applicable_standard_from_sources(sources)
+        applicable_standard = infer_applicable_standard_from_sources(
+            sources=sources,
+            recommended_standard_target=recommended_standard_target,
+        )
 
         report = ReportSections(
             detection_summary=natural_detection_summary,

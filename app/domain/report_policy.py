@@ -15,15 +15,6 @@ def infer_grounding_strength(
     standards_interpretation: str,
     grounding_disclaimer: str,
 ) -> str:
-    """
-    Infer the grounding strength based on the presence of specific markers in the standards 
-    interpretation and grounding disclaimer. The function checks for weak and moderate markers 
-    to determine the overall grounding strength, which can be categorized as "weak", "moderate", 
-    or "strong". This inference helps in assessing the reliability of the information provided 
-    in the standards interpretation and grounding disclaimer, which is crucial for making 
-    informed decisions regarding the acceptability status and recommended actions for the 
-    analyzed conditions.
-    """
     standards_text = standards_interpretation.lower()
     disclaimer_text = grounding_disclaimer.lower()
 
@@ -42,6 +33,7 @@ def infer_grounding_strength(
         "may indicate",
         "related",
         "analogous",
+        "closest related",
         "suggests",
         "should be reviewed",
     ]
@@ -55,24 +47,49 @@ def infer_grounding_strength(
     return "strong"
 
 
+def infer_interpretation_basis(
+    standards_interpretation: str,
+    grounding_disclaimer: str,
+) -> str:
+    standards_text = standards_interpretation.lower()
+    disclaimer_text = grounding_disclaimer.lower()
+
+    related_markers = [
+        "does not directly define",
+        "related conditions",
+        "related concept",
+        "closest related",
+        "most closely related",
+        "while the defect detected is",
+        "analogous",
+        "not a direct match",
+    ]
+
+    if any(marker in standards_text or marker in disclaimer_text for marker in related_markers):
+        return "related_defect"
+
+    insufficient_markers = [
+        "insufficient",
+        "cannot be made",
+        "does not contain explicit criteria",
+    ]
+
+    if any(marker in standards_text or marker in disclaimer_text for marker in insufficient_markers):
+        return "insufficient_context"
+
+    return "direct"
+
+
 def infer_acceptability_status(
     standards_interpretation: str,
     recommendation: str,
     grounding_strength: str,
+    interpretation_basis: str,
 ) -> str:
-    """
-    Infer the acceptability status based on the presence of specific markers in the standards 
-    interpretation and recommendation, as well as the grounding strength. The function checks for 
-    nonconforming and review markers to determine the overall acceptability status, which can be 
-    categorized as "nonconforming", "requires_additional_review", or "undetermined". This inference 
-    helps in assessing the reliability of the information provided in the standards interpretation 
-    and recommendation, as well as the grounding strength, which is crucial for making informed 
-    decisions regarding the acceptability status and recommended actions for the analyzed conditions.
-    """
     standards_text = standards_interpretation.lower()
     recommendation_text = recommendation.lower()
 
-    if grounding_strength == "weak":
+    if grounding_strength == "weak" or interpretation_basis == "related_defect":
         return "requires_additional_review"
 
     nonconforming_markers = [
@@ -81,9 +98,8 @@ def infer_acceptability_status(
         "shall not",
         "nonconforming",
         "reject",
-        "short circuit",
+        "electrical short",
         "electrical open",
-        "unintended conductive connection",
     ]
 
     review_markers = [
@@ -107,19 +123,11 @@ def infer_recommended_action(
     recommendation: str,
     acceptability_status: str,
     grounding_strength: str,
+    interpretation_basis: str,
 ) -> str:
-    """
-    Infer the recommended action based on the recommendation text and acceptability status. 
-    The function checks for specific markers in the recommendation text to determine the 
-    appropriate recommended action, which can be categorized as "rework", "repair", "scrap",
-    "engineering_review", "reject", or "document_and_review". This inference helps in guiding 
-    the next steps for addressing the analyzed conditions based on the standards interpretation,
-    recommendation, and grounding strength, which is crucial for making informed decisions 
-    regarding the recommended actions for the analyzed conditions.
-    """
     recommendation_text = recommendation.lower()
 
-    if grounding_strength == "weak":
+    if grounding_strength == "weak" or interpretation_basis == "related_defect":
         return "engineering_review"
 
     if "rework" in recommendation_text:
@@ -134,37 +142,3 @@ def infer_recommended_action(
         return "reject"
 
     return "document_and_review"
-
-
-def infer_interpretation_basis(
-    standards_interpretation: str,
-    grounding_disclaimer: str,
-) -> str:
-    """
-    Infer the interpretation basis based on the presence of specific markers in the standards
-    interpretation and grounding disclaimer. The function checks for related_defect and
-    insufficient_context markers to determine the overall interpretation basis, which can be
-    categorized as "related_defect", "insufficient_context", or "direct". This inference helps in
-    assessing the basis for the standards interpretation, which is crucial for understanding the
-    context and rationale behind the interpretation, as well as for making informed decisions
-    regarding the acceptability status and recommended actions for the analyzed conditions.
-    """
-    standards_text = standards_interpretation.lower()
-    disclaimer_text = grounding_disclaimer.lower()
-
-    if (
-        "does not directly define" in standards_text
-        or "related conditions" in standards_text
-        or "related concept" in standards_text
-        or "analogous" in standards_text
-    ):
-        return "related_defect"
-
-    if (
-        "insufficient" in standards_text
-        or "cannot be made" in disclaimer_text
-        or "does not contain explicit criteria" in disclaimer_text
-    ):
-        return "insufficient_context"
-
-    return "direct"
