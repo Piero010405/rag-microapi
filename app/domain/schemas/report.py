@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 class ReportGenerationRequest(BaseModel):
     """
-    Reporte Generation Request model for generating a report based on the provided defect information.
+    Report generation request
     """
     defect_class: str
     instances_count: int
@@ -15,12 +15,14 @@ class ReportGenerationRequest(BaseModel):
     confidence_avg: float
     severity: str
     user_question: str
+    standard_target: str | None = None
+    product_class: str | None = None
+    board_side: str | None = None
 
 
 class ReportSections(BaseModel):
     """
-    Generated report sections based on the provided defect information, including detection summary,
-    standards interpretation, technical risk, recommendation, and grounding disclaimer.
+    Report sections
     """
     detection_summary: str
     standards_interpretation: str
@@ -31,10 +33,13 @@ class ReportSections(BaseModel):
 
 class ReportGenerationResponse(BaseModel):
     """
-    Report Generation Response model for returning the generated report sections, raw answer from 
-    the model, sources used for generating the report, and any additional metadata related to the report generation process.
+    Report generation response
     """
     report: ReportSections
+    report_text: str
     raw_answer: str
     sources: list
     metadata: dict
+    normalized_defect_name: str
+    recommended_standard_target: str
+    inspection_scope: str

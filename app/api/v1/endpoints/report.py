@@ -20,19 +20,18 @@ async def generate_report(
     rag_service=Depends(get_rag_service),
 ):
     """
-    Generate a report based on the provided request
+    Generate a report based on the provided defect information, including the defect class, 
+    instances count, and location.
     """
     result = await rag_service.generate_report(request)
 
-    return {
-        "report": {
-            "detection_summary": "",
-            "standards_interpretation": "",
-            "technical_risk": "",
-            "recommendation": "",
-            "grounding_disclaimer": "",
-        },
-        "raw_answer": result["raw_answer"],
-        "sources": result["sources"],
-        "metadata": result["metadata"],
-    }
+    return ReportGenerationResponse(
+        report=result["report"],
+        report_text=result["report_text"],
+        raw_answer=result["raw_answer"],
+        sources=result["sources"],
+        metadata=result["metadata"],
+        normalized_defect_name=result["normalized_defect_name"],
+        recommended_standard_target=result["recommended_standard_target"],
+        inspection_scope=result["inspection_scope"],
+    )

@@ -20,6 +20,9 @@ from app.infrastructure.clients.qdrant_client import QdrantSearchClient
 from app.infrastructure.clients.voyage_client import VoyageClient
 from app.utils.prompt_loader import load_prompt
 from app.utils.timers import Timer
+from app.domain.schemas.report import ReportSections
+from app.utils.report_parser import parse_report_sections
+from app.domain.defect_normalization import normalize_defect_class
 
 
 class RAGService:
@@ -289,15 +292,35 @@ class RAGService:
             for chunk in chunks
         ]
     
-    async def generate_report(
-        self,
-        request,
-    ):
-        """
-        Generates a report based on the provided request.
-        """
+    async def generate_report(self, request):
+        normalized = normalize_defect_class(request.defect_class)
+
+        normalized_defect_name = normalized["canonical_name"]
+        query_aliases = normalized["query_aliases"]
+        recommended_standard_target = (
+            request.standard_target
+            if request.standard_target
+            else normalized["recommended_standard_targets"][0]
+        )
+        inspection_scope = normalized["inspection_scope"]
+
+        product_class = request.product_class if request.product_class else "unknown"
+        board_side = request.board_side if request.board_side else "unknown"
+
+        retrieval_query = " ".join(
+            [
+                normalized_defect_name,
+                *query_aliases,
+                recommended_standard_target,
+                inspection_scope,
+                request.user_question,
+            ]
+        )
+
         retrieve_response = await self.retrieve(
-            query=f"{request.defect_class} PCB defect standards IPC-A-610 acceptability",
+            query=retrieval_query,
+            top_k=5,
+            score_threshold=0.2,
         )
 
         context = self._build_context(retrieve_response.retrieved_chunks)
@@ -306,24 +329,52 @@ class RAGService:
 
         final_prompt = prompt_template.format(
             defect_class=request.defect_class,
+            normalized_defect_name=normalized_defect_name,
             instances_count=request.instances_count,
             location=request.location,
             average_area_mm2=request.average_area_mm2,
             confidence_avg=request.confidence_avg,
             severity=request.severity,
+            board_side=board_side,
+            product_class=product_class,
+            standard_target=recommended_standard_target,
+            inspection_scope=inspection_scope,
             user_question=request.user_question,
             context=context,
         )
 
-        answer = await self.gemini_client.generate(
-            system_prompt="You are a strict technical report generator.",
+        raw_answer = await self.gemini_client.generate(
+            system_prompt="You are a strict technical PCB report generator.",
             user_prompt=final_prompt,
             temperature=0.1,
-            max_output_tokens=800,
+            max_output_tokens=900,
+        )
+
+        parsed = parse_report_sections(raw_answer)
+
+        report = ReportSections(
+            detection_summary=parsed["detection_summary"],
+            standards_interpretation=parsed["standards_interpretation"],
+            technical_risk=parsed["technical_risk"],
+            recommendation=parsed["recommendation"],
+            grounding_disclaimer=parsed["grounding_disclaimer"],
+        )
+
+        report_text = (
+            f"Detection Summary:\n{report.detection_summary}\n\n"
+            f"Standards-Based Assessment:\n{report.standards_interpretation}\n\n"
+            f"Technical Risk / Implication:\n{report.technical_risk}\n\n"
+            f"Preliminary Disposition / Recommendation:\n{report.recommendation}\n\n"
+            f"Limitations / Grounding Note:\n{report.grounding_disclaimer}"
         )
 
         return {
-            "raw_answer": answer,
+            "report": report,
+            "report_text": report_text,
+            "raw_answer": raw_answer,
             "sources": self._build_sources(retrieve_response.retrieved_chunks),
-            "metadata": retrieve_response.metadata.dict(),
+            "metadata": retrieve_response.metadata.model_dump(),
+            "normalized_defect_name": normalized_defect_name,
+            "recommended_standard_target": recommended_standard_target,
+            "inspection_scope": inspection_scope,
         }
