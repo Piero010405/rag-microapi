@@ -13,6 +13,12 @@ from app.domain.schemas.common import (
     RetrievedChunk,
     SourceReference,
 )
+from app.domain.report_policy import (
+    REPORT_POLICY,
+    infer_acceptability_status,
+    infer_grounding_strength,
+    infer_recommended_action,
+)
 from app.domain.schemas.debug import DebugResponse
 from app.domain.schemas.rag import QueryMetadata, QueryResponse, RetrieveResponse
 from app.infrastructure.clients.gemini_client import GeminiClient
@@ -291,6 +297,26 @@ class RAGService:
             )
             for chunk in chunks
         ]
+
+    def _build_natural_detection_summary(
+        self,
+        normalized_defect_name: str,
+        instances_count: int,
+        location: str,
+        average_area_mm2: float,
+        confidence_avg: float,
+        severity: str,
+        board_side: str,
+        inspection_scope: str,
+    ) -> str:
+        return (
+            f"The inspection system detected {instances_count} instance(s) of "
+            f"{normalized_defect_name} in the {location} region of the {board_side} side, "
+            f"within the {inspection_scope} scope. The average affected area was "
+            f"{average_area_mm2:.2f} mm², with an average confidence score of "
+            f"{confidence_avg:.2f}. The detection subsystem assigned a severity label of "
+            f"'{severity}'."
+        )
     
     async def generate_report(self, request):
         normalized = normalize_defect_class(request.defect_class)
@@ -311,6 +337,11 @@ class RAGService:
             [
                 normalized_defect_name,
                 *query_aliases,
+                "defect",
+                "acceptability",
+                "criteria",
+                "electrical",
+                "continuity",
                 recommended_standard_target,
                 inspection_scope,
                 request.user_question,
@@ -319,8 +350,8 @@ class RAGService:
 
         retrieve_response = await self.retrieve(
             query=retrieval_query,
-            top_k=5,
-            score_threshold=0.2,
+            top_k=REPORT_POLICY["report_retrieval_top_k"],
+            score_threshold=REPORT_POLICY["report_retrieval_score_threshold"],
         )
 
         context = self._build_context(retrieve_response.retrieved_chunks)
@@ -346,18 +377,50 @@ class RAGService:
         raw_answer = await self.gemini_client.generate(
             system_prompt="You are a strict technical PCB report generator.",
             user_prompt=final_prompt,
-            temperature=0.1,
-            max_output_tokens=900,
+            temperature=REPORT_POLICY["report_generation_temperature"],
+            max_output_tokens=REPORT_POLICY["report_generation_max_output_tokens"],
         )
 
         parsed = parse_report_sections(raw_answer)
 
+        natural_detection_summary = self._build_natural_detection_summary(
+            normalized_defect_name=normalized_defect_name,
+            instances_count=request.instances_count,
+            location=request.location,
+            average_area_mm2=request.average_area_mm2,
+            confidence_avg=request.confidence_avg,
+            severity=request.severity,
+            board_side=board_side,
+            inspection_scope=inspection_scope,
+        )
+
+        standards_interpretation = parsed["standards_interpretation"]
+        technical_risk = parsed["technical_risk"]
+        recommendation = parsed["recommendation"]
+        grounding_disclaimer = parsed["grounding_disclaimer"]
+
+        grounding_strength = infer_grounding_strength(
+            standards_interpretation=standards_interpretation,
+            grounding_disclaimer=grounding_disclaimer,
+        )
+
+        acceptability_status = infer_acceptability_status(
+            standards_interpretation=standards_interpretation,
+            recommendation=recommendation,
+            grounding_strength=grounding_strength,
+        )
+
+        recommended_action = infer_recommended_action(
+            recommendation=recommendation,
+            acceptability_status=acceptability_status,
+        )
+
         report = ReportSections(
-            detection_summary=parsed["detection_summary"],
-            standards_interpretation=parsed["standards_interpretation"],
-            technical_risk=parsed["technical_risk"],
-            recommendation=parsed["recommendation"],
-            grounding_disclaimer=parsed["grounding_disclaimer"],
+            detection_summary=natural_detection_summary,
+            standards_interpretation=standards_interpretation,
+            technical_risk=technical_risk,
+            recommendation=recommendation,
+            grounding_disclaimer=grounding_disclaimer,
         )
 
         report_text = (
@@ -368,13 +431,21 @@ class RAGService:
             f"Limitations / Grounding Note:\n{report.grounding_disclaimer}"
         )
 
+        metadata = retrieve_response.metadata.model_dump()
+        metadata["report_retrieval_query"] = retrieval_query
+        metadata["product_class"] = product_class
+        metadata["board_side"] = board_side
+
         return {
             "report": report,
             "report_text": report_text,
             "raw_answer": raw_answer,
             "sources": self._build_sources(retrieve_response.retrieved_chunks),
-            "metadata": retrieve_response.metadata.model_dump(),
+            "metadata": metadata,
             "normalized_defect_name": normalized_defect_name,
             "recommended_standard_target": recommended_standard_target,
             "inspection_scope": inspection_scope,
+            "grounding_strength": grounding_strength,
+            "acceptability_status": acceptability_status,
+            "recommended_action": recommended_action,
         }

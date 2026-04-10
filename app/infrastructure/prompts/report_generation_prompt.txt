@@ -23,10 +23,10 @@ Task:
 Generate a technical report using ONLY the retrieved context and the detected defect information.
 
 Rules:
-1. Separate detection facts from standards-based interpretation.
-2. Do not claim the standard defines limits that are not explicitly present in the retrieved context.
-3. Do not transform detector severity into a standards-based class unless explicitly supported.
-4. If the context is insufficient, say so clearly.
+1. Separate detector-derived observations from standards-based interpretation.
+2. Do not claim the standard defines quantitative limits unless they are explicitly present in the retrieved context.
+3. Do not map detector severity into a standards class unless the context explicitly supports it.
+4. If the defect is not directly defined, use only closely related defect descriptions from the retrieved context.
 5. Recommendations must be conservative and grounded.
 6. Do not invent clauses, classes, page numbers, or thresholds.
 
