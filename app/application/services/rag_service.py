@@ -17,8 +17,10 @@ from app.domain.report_policy import (
     REPORT_POLICY,
     infer_acceptability_status,
     infer_grounding_strength,
+    infer_interpretation_basis,
     infer_recommended_action,
 )
+from app.domain.source_normalization import infer_applicable_standard_from_sources
 from app.domain.schemas.debug import DebugResponse
 from app.domain.schemas.rag import QueryMetadata, QueryResponse, RetrieveResponse
 from app.infrastructure.clients.gemini_client import GeminiClient
@@ -404,6 +406,11 @@ class RAGService:
             grounding_disclaimer=grounding_disclaimer,
         )
 
+        interpretation_basis = infer_interpretation_basis(
+            standards_interpretation=standards_interpretation,
+            grounding_disclaimer=grounding_disclaimer,
+        )
+
         acceptability_status = infer_acceptability_status(
             standards_interpretation=standards_interpretation,
             recommendation=recommendation,
@@ -413,7 +420,11 @@ class RAGService:
         recommended_action = infer_recommended_action(
             recommendation=recommendation,
             acceptability_status=acceptability_status,
+            grounding_strength=grounding_strength,
         )
+
+        sources = self._build_sources(retrieve_response.retrieved_chunks)
+        applicable_standard = infer_applicable_standard_from_sources(sources)
 
         report = ReportSections(
             detection_summary=natural_detection_summary,
@@ -440,7 +451,7 @@ class RAGService:
             "report": report,
             "report_text": report_text,
             "raw_answer": raw_answer,
-            "sources": self._build_sources(retrieve_response.retrieved_chunks),
+            "sources": sources,
             "metadata": metadata,
             "normalized_defect_name": normalized_defect_name,
             "recommended_standard_target": recommended_standard_target,
@@ -448,4 +459,6 @@ class RAGService:
             "grounding_strength": grounding_strength,
             "acceptability_status": acceptability_status,
             "recommended_action": recommended_action,
+            "interpretation_basis": interpretation_basis,
+            "applicable_standard": applicable_standard,
         }

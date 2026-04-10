@@ -6,10 +6,9 @@ from pydantic import BaseModel
 
 class ReportGenerationRequest(BaseModel):
     """
-    Report generation request schema defines the parameters required for generating a report based on a 
-    user question and defect information. It includes fields for the user's question, details about the
-    defect such as its class, count, location, average area, confidence level, severity, and 
-    optional fields for standard target, product class, and board side.
+    Report generation request schema defines the structure of the input data required for generating 
+    a report. It includes details about the defect, such as its class, count, location, average area
+    and confidence, severity, user question, standard target, product class, and board side.
     """
     defect_class: str
     instances_count: int
@@ -25,13 +24,11 @@ class ReportGenerationRequest(BaseModel):
 
 class ReportSections(BaseModel):
     """
-    Report sections schema defines the structure of the generated report, including sections for detection summary, standards interpretation, technical risk assessment, recommendation, 
-    and grounding disclaimer. Each section is represented as a string, and the schema serves 
-    as a blueprint for the content of the report generated in response to a user's question 
-    about a defect. The sections are designed to provide a comprehensive analysis of the defect,
-    including a summary of the detection process, an interpretation of relevant standards, an 
-    assessment of technical risks, specific recommendations for action, and any disclaimers 
-    regarding the grounding of the report.
+    Report sections schema defines the structure of the different sections that make up the 
+    generated report. Each section provides specific information related to the analysis of the 
+    defect and the applicable standards, including a summary of the detection results, interpretation 
+    of the standards, assessment of the technical risk, recommendations for addressing the defect, 
+    and any disclaimers regarding the grounding of the recommendations.
     """
     detection_summary: str
     standards_interpretation: str
@@ -42,13 +39,14 @@ class ReportSections(BaseModel):
 
 class ReportGenerationResponse(BaseModel):
     """
-    Report generation response schema defines the structure of the response returned after generating 
-    a report. It includes fields for the report sections, the full text of the report, the raw 
-    answer from the language model, a list of sources used in the report, metadata about the 
-    report generation process, and additional fields for normalized defect name, recommended 
-    standard target, inspection scope, grounding strength, acceptability status, and recommended 
-    action. This schema serves as a comprehensive representation of the generated report and 
-    its associated information.
+    Report generation response schema defines the structure of the output data generated after processing
+    the report generation request. It includes the different sections of the report, the full text of
+    the report, the raw answer from the processing, the sources used for generating the report, and
+    various metadata related to the analysis, such as the normalized defect name, recommended standard
+    target, inspection scope, grounding strength, acceptability status, recommended action,
+    interpretation basis, and applicable standard. This structured response allows for easy consumption
+    and further processing of the generated report, as well as for maintaining consistency in the
+    representation of the analysis results and recommendations.
     """
     report: ReportSections
     report_text: str
@@ -61,3 +59,5 @@ class ReportGenerationResponse(BaseModel):
     grounding_strength: str
     acceptability_status: str
     recommended_action: str
+    interpretation_basis: str
+    applicable_standard: str

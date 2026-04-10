@@ -29,6 +29,7 @@ Rules:
 4. If the defect is not directly defined, use only closely related defect descriptions from the retrieved context.
 5. Recommendations must be conservative and grounded.
 6. Do not invent clauses, classes, page numbers, or thresholds.
+7. If the standards-based assessment is indirect or analogy-based, the recommendation must remain preliminary and should not imply final acceptance, rejection, or mandatory rework unless explicitly supported.
 
 Return the answer EXACTLY with these section headers:
 

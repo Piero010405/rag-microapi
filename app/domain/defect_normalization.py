@@ -1,3 +1,14 @@
+"""
+Defect normalization mapping for standardizing the names of defect classes. This mapping is used 
+to ensure that different variations of the same defect class are recognized as the same defect, 
+which helps in maintaining consistency in the analysis and reporting processes. The keys in the 
+mapping represent the original names of the defect classes, while the values represent a 
+dictionary containing the canonical name, query aliases, recommended standard targets, and 
+inspection scope for each defect class. This normalization process is crucial for accurate 
+referencing and retrieval of information related to the defects being analyzed, and it helps 
+to ensure that the analysis is based on a consistent understanding of the defect classes, 
+which can inform the subsequent analysis and decision-making processes.
+"""
 DEFECT_NORMALIZATION = {
     "open_circuit": {
         "canonical_name": "open circuit",
