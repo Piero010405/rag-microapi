@@ -288,3 +288,42 @@ class RAGService:
             )
             for chunk in chunks
         ]
+    
+    async def generate_report(
+        self,
+        request,
+    ):
+        """
+        Generates a report based on the provided request.
+        """
+        retrieve_response = await self.retrieve(
+            query=f"{request.defect_class} PCB defect standards IPC-A-610 acceptability",
+        )
+
+        context = self._build_context(retrieve_response.retrieved_chunks)
+
+        prompt_template = load_prompt("report_generation_prompt.txt")
+
+        final_prompt = prompt_template.format(
+            defect_class=request.defect_class,
+            instances_count=request.instances_count,
+            location=request.location,
+            average_area_mm2=request.average_area_mm2,
+            confidence_avg=request.confidence_avg,
+            severity=request.severity,
+            user_question=request.user_question,
+            context=context,
+        )
+
+        answer = await self.gemini_client.generate(
+            system_prompt="You are a strict technical report generator.",
+            user_prompt=final_prompt,
+            temperature=0.1,
+            max_output_tokens=800,
+        )
+
+        return {
+            "raw_answer": answer,
+            "sources": self._build_sources(retrieve_response.retrieved_chunks),
+            "metadata": retrieve_response.metadata.dict(),
+        }
