@@ -51,30 +51,39 @@ def infer_interpretation_basis(
     standards_interpretation: str,
     grounding_disclaimer: str,
 ) -> str:
-    standards_text = standards_interpretation.lower()
-    disclaimer_text = grounding_disclaimer.lower()
+    text = (standards_interpretation + " " + grounding_disclaimer).lower()
 
-    related_markers = [
-        "does not directly define",
-        "related conditions",
-        "related concept",
-        "closest related",
-        "most closely related",
-        "while the defect detected is",
-        "analogous",
-        "not a direct match",
-    ]
-
-    if any(marker in standards_text or marker in disclaimer_text for marker in related_markers):
+    if any(
+        phrase in text
+        for phrase in [
+            "not explicitly defined",
+            "not directly defined",
+            "not defined in the standard",
+            "no explicit criteria",
+            "no direct definition",
+        ]
+    ):
         return "related_defect"
 
-    insufficient_markers = [
-        "insufficient",
-        "cannot be made",
-        "does not contain explicit criteria",
-    ]
+    if any(
+        phrase in text
+        for phrase in [
+            "related to",
+            "analogous to",
+            "similar to",
+            "based on related",
+        ]
+    ):
+        return "related_defect"
 
-    if any(marker in standards_text or marker in disclaimer_text for marker in insufficient_markers):
+    if any(
+        phrase in text
+        for phrase in [
+            "insufficient context",
+            "limited context",
+            "not enough information",
+        ]
+    ):
         return "insufficient_context"
 
     return "direct"
