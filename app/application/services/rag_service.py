@@ -32,6 +32,8 @@ from app.domain.schemas.report import ReportSections
 from app.utils.report_parser import parse_report_sections
 from app.domain.defect_normalization import normalize_defect_class
 from app.metrics.report_metrics_store import append_report_metric
+from app.domain.defect_knowledge import get_defect_knowledge
+from app.utils.report_aggregation import aggregate_detection_payload
 
 
 class RAGService:
@@ -322,24 +324,51 @@ class RAGService:
         )
     
     async def generate_report(self, request):
-        normalized = normalize_defect_class(request.defect_class)
+        aggregated = aggregate_detection_payload(
+            [d.model_dump() for d in request.detections]
+        )
 
-        normalized_defect_name = normalized["canonical_name"]
-        query_aliases = normalized["query_aliases"]
+        defect_class = aggregated["defect_class"]
+        instances_count = aggregated["instances_count"]
+        confidence_avg = aggregated["confidence_avg"]
+        average_area_mm2 = aggregated["average_area_mm2"]
+        severity = aggregated["severity"]
+        location_summary = aggregated["location_summary"]
+        reference_hint = aggregated["reference_hint"]
+
+        knowledge = get_defect_knowledge(defect_class)
+
+        normalized_defect_name = knowledge["canonical_name"]
+        query_aliases = knowledge["query_aliases"]
         recommended_standard_target = (
             request.standard_target
             if request.standard_target
-            else normalized["recommended_standard_targets"][0]
+            else knowledge["recommended_standard_targets"][0]
         )
-        inspection_scope = normalized["inspection_scope"]
+        inspection_scope = knowledge["inspection_scope"]
+
+        ipc_family = knowledge["ipc_family"]
+        ipc_basis = knowledge["ipc_basis"]
+        description = knowledge["description"]
+        engineering_justification = knowledge["engineering_justification"]
 
         product_class = request.product_class if request.product_class else "unknown"
         board_side = request.board_side if request.board_side else "unknown"
+
+        if request.user_question:
+            user_question = request.user_question
+        else:
+            user_question = (
+                f"What does {recommended_standard_target} indicate about this defect condition, "
+                f"its acceptability, technical significance, and recommended disposition?"
+            )
 
         retrieval_query = " ".join(
             [
                 normalized_defect_name,
                 *query_aliases,
+                ipc_family,
+                ipc_basis,
                 "defect",
                 "acceptability",
                 "criteria",
@@ -347,7 +376,8 @@ class RAGService:
                 "continuity",
                 recommended_standard_target,
                 inspection_scope,
-                request.user_question,
+                reference_hint or "",
+                user_question,
             ]
         )
 
@@ -362,18 +392,23 @@ class RAGService:
         prompt_template = load_prompt("report_generation_prompt.txt")
 
         final_prompt = prompt_template.format(
-            defect_class=request.defect_class,
+            defect_class=defect_class,
             normalized_defect_name=normalized_defect_name,
-            instances_count=request.instances_count,
-            location=request.location,
-            average_area_mm2=request.average_area_mm2,
-            confidence_avg=request.confidence_avg,
-            severity=request.severity,
+            instances_count=instances_count,
+            location_summary=location_summary,
+            average_area_mm2=average_area_mm2,
+            confidence_avg=confidence_avg,
+            severity=severity,
             board_side=board_side,
             product_class=product_class,
             standard_target=recommended_standard_target,
             inspection_scope=inspection_scope,
-            user_question=request.user_question,
+            ipc_family=ipc_family,
+            ipc_basis=ipc_basis,
+            description=description,
+            engineering_justification=engineering_justification,
+            reference_hint=reference_hint or "none",
+            user_question=user_question,
             context=context,
         )
 
@@ -386,15 +421,12 @@ class RAGService:
 
         parsed = parse_report_sections(raw_answer)
 
-        natural_detection_summary = self._build_natural_detection_summary(
-            normalized_defect_name=normalized_defect_name,
-            instances_count=request.instances_count,
-            location=request.location,
-            average_area_mm2=request.average_area_mm2,
-            confidence_avg=request.confidence_avg,
-            severity=request.severity,
-            board_side=board_side,
-            inspection_scope=inspection_scope,
+        natural_detection_summary = (
+            f"The inspection system detected {instances_count} instance(s) of "
+            f"{normalized_defect_name} distributed across the following region(s): "
+            f"{location_summary}. The average affected area was {average_area_mm2:.2f} mm², "
+            f"with an average confidence score of {confidence_avg:.2f}. "
+            f"The dominant severity label assigned by the detection subsystem was '{severity}'."
         )
 
         standards_interpretation = parsed["standards_interpretation"]
@@ -452,10 +484,11 @@ class RAGService:
         metadata["report_retrieval_query"] = retrieval_query
         metadata["product_class"] = product_class
         metadata["board_side"] = board_side
+        metadata["reference_hint"] = reference_hint
 
         append_report_metric(
             {
-                "defect_class": request.defect_class,
+                "defect_class": defect_class,
                 "normalized_defect_name": normalized_defect_name,
                 "recommended_standard_target": recommended_standard_target,
                 "inspection_scope": inspection_scope,

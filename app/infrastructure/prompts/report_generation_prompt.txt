@@ -4,7 +4,7 @@ Detected defect information:
 - Defect class (raw): {defect_class}
 - Normalized defect name: {normalized_defect_name}
 - Instances count: {instances_count}
-- Location: {location}
+- Location summary: {location_summary}
 - Average area: {average_area_mm2} mm²
 - Average confidence: {confidence_avg}
 - Severity label from detection system: {severity}
@@ -12,6 +12,11 @@ Detected defect information:
 - Product class: {product_class}
 - Preferred standard target: {standard_target}
 - Inspection scope: {inspection_scope}
+- IPC family hint: {ipc_family}
+- IPC basis hint: {ipc_basis}
+- Description hint: {description}
+- Engineering justification hint: {engineering_justification}
+- Reference hint from detector: {reference_hint}
 
 User question:
 {user_question}
@@ -28,8 +33,9 @@ Rules:
 3. Do not map detector severity into a standards class unless the context explicitly supports it.
 4. If the defect is not directly defined, use only closely related defect descriptions from the retrieved context.
 5. Recommendations must be conservative and grounded.
-6. Do not invent clauses, classes, page numbers, or thresholds.
-7. If the standards-based assessment is indirect or analogy-based, the recommendation must remain preliminary and should not imply final acceptance, rejection, or mandatory rework unless explicitly supported.
+6. The detector-provided reference is only a hint, not confirmed evidence.
+7. Do not invent clauses, classes, page numbers, or thresholds.
+8. If the standards-based assessment is indirect or analogy-based, the recommendation must remain preliminary.
 
 Return the answer EXACTLY with these section headers:
 
