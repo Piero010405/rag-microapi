@@ -31,6 +31,7 @@ from app.utils.timers import Timer
 from app.domain.schemas.report import ReportSections
 from app.utils.report_parser import parse_report_sections
 from app.domain.defect_normalization import normalize_defect_class
+from app.metrics.report_metrics_store import append_report_metric
 
 
 class RAGService:
@@ -451,6 +452,20 @@ class RAGService:
         metadata["report_retrieval_query"] = retrieval_query
         metadata["product_class"] = product_class
         metadata["board_side"] = board_side
+
+        append_report_metric(
+            {
+                "defect_class": request.defect_class,
+                "normalized_defect_name": normalized_defect_name,
+                "recommended_standard_target": recommended_standard_target,
+                "inspection_scope": inspection_scope,
+                "grounding_strength": grounding_strength,
+                "interpretation_basis": interpretation_basis,
+                "acceptability_status": acceptability_status,
+                "recommended_action": recommended_action,
+                "latency_ms": metadata.get("latency_ms", 0),
+            }
+        )
 
         return {
             "report": report,
