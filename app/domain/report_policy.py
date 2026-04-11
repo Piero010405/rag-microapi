@@ -53,18 +53,23 @@ def infer_interpretation_basis(
 ) -> str:
     text = (standards_interpretation + " " + grounding_disclaimer).lower()
 
+    # 🔴 PRIORIDAD MÁXIMA → NO DEFINICIÓN EXPLÍCITA
     if any(
         phrase in text
         for phrase in [
             "not explicitly defined",
             "not directly defined",
             "not defined in the standard",
+            "does not explicitly define",
             "no explicit criteria",
             "no direct definition",
+            "not fully detailed",
+            "not clearly defined",
         ]
     ):
         return "related_defect"
 
+    # 🔴 ANALOGÍAS
     if any(
         phrase in text
         for phrase in [
@@ -76,6 +81,7 @@ def infer_interpretation_basis(
     ):
         return "related_defect"
 
+    # 🔴 FALTA DE CONTEXTO
     if any(
         phrase in text
         for phrase in [
