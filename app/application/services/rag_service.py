@@ -34,6 +34,7 @@ from app.domain.defect_normalization import normalize_defect_class
 from app.metrics.report_metrics_store import append_report_metric
 from app.domain.defect_knowledge import get_defect_knowledge
 from app.utils.report_aggregation import aggregate_detection_payload
+from app.domain.schemas.common import RetrievedChunk
 
 
 class RAGService:
@@ -323,6 +324,66 @@ class RAGService:
             f"'{severity}'."
         )
     
+    def _build_report_retrieval_queries(
+        self,
+        normalized_defect_name: str,
+        query_aliases: list[str],
+        ipc_family: str,
+        ipc_basis: str,
+        description: str,
+        engineering_justification: str,
+        recommended_standard_target: str,
+        inspection_scope: str,
+        reference_hint: str | None,
+        user_question: str,
+    ) -> list[str]:
+        queries = [
+            f"{normalized_defect_name} {recommended_standard_target} acceptability criteria {inspection_scope}",
+            f"{ipc_family} {ipc_basis} {recommended_standard_target} printed board defect",
+            f"{description} {engineering_justification} {recommended_standard_target}",
+            f"{' '.join(query_aliases)} {recommended_standard_target} {reference_hint or ''} {user_question}",
+        ]
+
+        # Elimina duplicados y vacíos
+        cleaned = []
+        seen = set()
+        for q in queries:
+            q = " ".join(q.split()).strip()
+            if q and q not in seen:
+                seen.add(q)
+                cleaned.append(q)
+
+        return cleaned
+
+    async def _retrieve_multi_query(
+        self,
+        queries: list[str],
+        top_k_per_query: int,
+        score_threshold: float,
+        max_final_chunks: int,
+    ) -> list[RetrievedChunk]:
+        merged: dict[str, RetrievedChunk] = {}
+
+        for query in queries:
+            partial_response = await self.retrieve(
+                query=query,
+                top_k=top_k_per_query,
+                score_threshold=score_threshold,
+            )
+
+            for chunk in partial_response.retrieved_chunks:
+                existing = merged.get(chunk.chunk_id)
+                if existing is None or chunk.score > existing.score:
+                    merged[chunk.chunk_id] = chunk
+
+        ranked = sorted(
+            merged.values(),
+            key=lambda c: c.score,
+            reverse=True,
+        )
+
+        return ranked[:max_final_chunks]
+    
     async def generate_report(self, request):
         aggregated = aggregate_detection_payload(
             [d.model_dump() for d in request.detections]
@@ -363,31 +424,27 @@ class RAGService:
                 f"its acceptability, technical significance, and recommended disposition?"
             )
 
-        retrieval_query = " ".join(
-            [
-                normalized_defect_name,
-                *query_aliases,
-                ipc_family,
-                ipc_basis,
-                "defect",
-                "acceptability",
-                "criteria",
-                "electrical",
-                "continuity",
-                recommended_standard_target,
-                inspection_scope,
-                reference_hint or "",
-                user_question,
-            ]
+        retrieval_queries = self._build_report_retrieval_queries(
+            normalized_defect_name=normalized_defect_name,
+            query_aliases=query_aliases,
+            ipc_family=ipc_family,
+            ipc_basis=ipc_basis,
+            description=description,
+            engineering_justification=engineering_justification,
+            recommended_standard_target=recommended_standard_target,
+            inspection_scope=inspection_scope,
+            reference_hint=reference_hint,
+            user_question=user_question,
         )
 
-        retrieve_response = await self.retrieve(
-            query=retrieval_query,
-            top_k=REPORT_POLICY["report_retrieval_top_k"],
+        retrieved_chunks = await self._retrieve_multi_query(
+            queries=retrieval_queries,
+            top_k_per_query=REPORT_POLICY["report_retrieval_per_query_top_k"],
             score_threshold=REPORT_POLICY["report_retrieval_score_threshold"],
+            max_final_chunks=REPORT_POLICY["report_retrieval_max_final_chunks"],
         )
 
-        context = self._build_context(retrieve_response.retrieved_chunks)
+        context = self._build_context(retrieved_chunks)
 
         prompt_template = load_prompt("report_generation_prompt.txt")
 
@@ -458,7 +515,7 @@ class RAGService:
             interpretation_basis=interpretation_basis,
         )
 
-        sources = self._build_sources(retrieve_response.retrieved_chunks)
+        sources = self._build_sources(retrieved_chunks)
         applicable_standard = infer_applicable_standard_from_sources(
             sources=sources,
             recommended_standard_target=recommended_standard_target,
@@ -480,11 +537,18 @@ class RAGService:
             f"Limitations / Grounding Note:\n{report.grounding_disclaimer}"
         )
 
-        metadata = retrieve_response.metadata.model_dump()
-        metadata["report_retrieval_query"] = retrieval_query
-        metadata["product_class"] = product_class
-        metadata["board_side"] = board_side
-        metadata["reference_hint"] = reference_hint
+        metadata = {
+            "model": self.settings.gemini_model,
+            "embedding_model": self.settings.voyage_model,
+            "qdrant_collection": self.settings.qdrant_collection,
+            "top_k": REPORT_POLICY["report_retrieval_per_query_top_k"],
+            "score_threshold": REPORT_POLICY["report_retrieval_score_threshold"],
+            "latency_ms": 0,
+            "report_retrieval_queries": retrieval_queries,
+            "product_class": product_class,
+            "board_side": board_side,
+            "reference_hint": reference_hint,
+        }
 
         append_report_metric(
             {

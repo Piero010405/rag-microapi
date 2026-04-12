@@ -4,10 +4,12 @@ infer grounding strength, acceptability status, and recommended actions based on
 interpretation and recommendations.
 """
 REPORT_POLICY = {
-    "report_retrieval_top_k": 5,
-    "report_retrieval_score_threshold": 0.4,
+    "report_retrieval_top_k": 10,
+    "report_retrieval_score_threshold": 0.35,
     "report_generation_temperature": 0.1,
     "report_generation_max_output_tokens": 900,
+    "report_retrieval_per_query_top_k": 5,
+    "report_retrieval_max_final_chunks": 8,
 }
 
 
