@@ -7,6 +7,7 @@ query processing for analysis and debugging purposes.
 """
 from __future__ import annotations
 
+import time
 from app.core.config import Settings
 from app.domain.schemas.common import (
     DebugRetrievedChunk,
@@ -30,12 +31,10 @@ from app.utils.prompt_loader import load_prompt
 from app.utils.timers import Timer
 from app.domain.schemas.report import ReportSections
 from app.utils.report_parser import parse_report_sections
-from app.domain.defect_normalization import normalize_defect_class
 from app.metrics.report_metrics_store import append_report_metric
 from app.domain.defect_knowledge import get_defect_knowledge
 from app.utils.report_aggregation import aggregate_detection_payload
 from app.domain.schemas.common import RetrievedChunk
-
 
 class RAGService:
     """
@@ -423,6 +422,8 @@ class RAGService:
                 f"What does {recommended_standard_target} indicate about this defect condition, "
                 f"its acceptability, technical significance, and recommended disposition?"
             )
+        
+        started_at = time.perf_counter()
 
         retrieval_queries = self._build_report_retrieval_queries(
             normalized_defect_name=normalized_defect_name,
@@ -537,13 +538,15 @@ class RAGService:
             f"Limitations / Grounding Note:\n{report.grounding_disclaimer}"
         )
 
+        elapsed_ms = round((time.perf_counter() - started_at) * 1000, 2)
+
         metadata = {
             "model": self.settings.gemini_model,
             "embedding_model": self.settings.voyage_model,
             "qdrant_collection": self.settings.qdrant_collection,
             "top_k": REPORT_POLICY["report_retrieval_per_query_top_k"],
             "score_threshold": REPORT_POLICY["report_retrieval_score_threshold"],
-            "latency_ms": 0,
+            "latency_ms": elapsed_ms,
             "report_retrieval_queries": retrieval_queries,
             "product_class": product_class,
             "board_side": board_side,
@@ -579,3 +582,4 @@ class RAGService:
             "interpretation_basis": interpretation_basis,
             "applicable_standard": applicable_standard,
         }
+    

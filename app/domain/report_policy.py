@@ -55,44 +55,43 @@ def infer_interpretation_basis(
 ) -> str:
     text = (standards_interpretation + " " + grounding_disclaimer).lower()
 
-    # 🔴 PRIORIDAD MÁXIMA → NO DEFINICIÓN EXPLÍCITA
-    if any(
-        phrase in text
-        for phrase in [
-            "not explicitly defined",
-            "not directly defined",
-            "not defined in the standard",
-            "does not explicitly define",
-            "no explicit criteria",
-            "no direct definition",
-            "not fully detailed",
-            "not clearly defined",
-        ]
-    ):
-        return "related_defect"
+    related_markers = [
+        "not explicitly defined",
+        "not directly defined",
+        "does not explicitly define",
+        "does not directly define",
+        "not explicitly present",
+        "not fully detailed",
+        "not clearly defined",
+        "based on hints",
+        "based on the provided hints",
+        "based on related descriptions",
+        "based on analogous",
+        "based on the general principles",
+        "the reference is a hint",
+        "the reference hint",
+        "while this defect is not explicitly defined",
+        "while the standard identifies",
+        "specific criteria are not detailed",
+        "specific quantitative criteria",
+        "not provided in the context",
+        "not provided in the retrieved context",
+        "the context does not provide explicit",
+        "the assessment relies on",
+    ]
 
-    # 🔴 ANALOGÍAS
-    if any(
-        phrase in text
-        for phrase in [
-            "related to",
-            "analogous to",
-            "similar to",
-            "based on related",
-        ]
-    ):
-        return "related_defect"
+    insufficient_markers = [
+        "insufficient context",
+        "limited context",
+        "not enough information",
+        "cannot determine definitively",
+    ]
 
-    # 🔴 FALTA DE CONTEXTO
-    if any(
-        phrase in text
-        for phrase in [
-            "insufficient context",
-            "limited context",
-            "not enough information",
-        ]
-    ):
+    if any(marker in text for marker in insufficient_markers):
         return "insufficient_context"
+
+    if any(marker in text for marker in related_markers):
+        return "related_defect"
 
     return "direct"
 
