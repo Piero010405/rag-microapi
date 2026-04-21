@@ -34,7 +34,6 @@ from app.utils.report_parser import parse_report_sections
 from app.metrics.report_metrics_store import append_report_metric
 from app.domain.defect_knowledge import get_defect_knowledge
 from app.utils.report_aggregation import aggregate_detection_payload
-from app.domain.schemas.common import RetrievedChunk
 
 class RAGService:
     """
@@ -322,7 +321,7 @@ class RAGService:
             f"{confidence_avg:.2f}. The detection subsystem assigned a severity label of "
             f"'{severity}'."
         )
-    
+
     def _build_report_retrieval_queries(
         self,
         normalized_defect_name: str,
@@ -337,10 +336,19 @@ class RAGService:
         user_question: str,
     ) -> list[str]:
         queries = [
-            f"{normalized_defect_name} {recommended_standard_target} acceptability criteria {inspection_scope}",
-            f"{ipc_family} {ipc_basis} {recommended_standard_target} printed board defect",
+            (
+                f"{normalized_defect_name} {recommended_standard_target} "
+                f"acceptability criteria {inspection_scope}"
+            ),
+            (
+                f"{ipc_family} {ipc_basis} {recommended_standard_target} "
+                f"printed board defect"
+            ),
             f"{description} {engineering_justification} {recommended_standard_target}",
-            f"{' '.join(query_aliases)} {recommended_standard_target} {reference_hint or ''} {user_question}",
+            (
+                f"{' '.join(query_aliases)} {recommended_standard_target} "
+                f"{reference_hint or ''} {user_question}"
+            ),
         ]
 
         # Elimina duplicados y vacíos
@@ -382,8 +390,15 @@ class RAGService:
         )
 
         return ranked[:max_final_chunks]
-    
+
     async def generate_report(self, request):
+        """
+        Generates a comprehensive report based on the defect detection results and the relevant
+        standards. The method aggregates the detection payload, retrieves relevant information 
+        from the vector database using multiple queries, constructs a detailed prompt for the 
+        Gemini language model, and generates a structured report. It also infers the product 
+        class and board side from the detection payload.
+        """
         aggregated = aggregate_detection_payload(
             [d.model_dump() for d in request.detections]
         )
@@ -422,7 +437,7 @@ class RAGService:
                 f"What does {recommended_standard_target} indicate about this defect condition, "
                 f"its acceptability, technical significance, and recommended disposition?"
             )
-        
+
         started_at = time.perf_counter()
 
         retrieval_queries = self._build_report_retrieval_queries(
@@ -582,4 +597,3 @@ class RAGService:
             "interpretation_basis": interpretation_basis,
             "applicable_standard": applicable_standard,
         }
-    

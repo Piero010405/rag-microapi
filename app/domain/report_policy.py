@@ -1,7 +1,7 @@
 """
-Report policy module defines the parameters for report retrieval and generation, as well as functions to
-infer grounding strength, acceptability status, and recommended actions based on the standards
-interpretation and recommendations.
+Report policy module defines the parameters for report retrieval and generation, as well as 
+functions to infer grounding strength, acceptability status, and recommended actions based on the 
+standards interpretation and recommendations.
 """
 REPORT_POLICY = {
     "report_retrieval_top_k": 10,
@@ -17,6 +17,10 @@ def infer_grounding_strength(
     standards_interpretation: str,
     grounding_disclaimer: str,
 ) -> str:
+    """
+    Infers the grounding strength (weak, moderate, strong) based on the presence of specific 
+    markers in the standards interpretation and grounding disclaimer texts.
+    """
     standards_text = standards_interpretation.lower()
     disclaimer_text = grounding_disclaimer.lower()
 
@@ -53,6 +57,11 @@ def infer_interpretation_basis(
     standards_interpretation: str,
     grounding_disclaimer: str,
 ) -> str:
+    """
+    Infers the interpretation basis (direct, related_defect, insufficient_context) based on the 
+    presence of specific markers in the standards interpretation and grounding disclaimer texts. 
+    This helps to categorize the basis for the interpretation of the standards interpretation.
+    """
     text = (standards_interpretation + " " + grounding_disclaimer).lower()
 
     related_markers = [
@@ -102,6 +111,11 @@ def infer_acceptability_status(
     grounding_strength: str,
     interpretation_basis: str,
 ) -> str:
+    """
+    Infers the acceptability status (nonconforming, requires_additional_review, undetermined) 
+    based on the presence of specific markers in the standards interpretation and recommendation 
+    texts, as well as the grounding strength and interpretation basis.
+    """
     standards_text = standards_interpretation.lower()
     recommendation_text = recommendation.lower()
 
@@ -126,7 +140,10 @@ def infer_acceptability_status(
         "requires additional review",
     ]
 
-    if any(marker in standards_text or marker in recommendation_text for marker in nonconforming_markers):
+    if any(
+        marker in standards_text or marker in recommendation_text
+        for marker in nonconforming_markers
+    ):
         return "nonconforming"
 
     if any(marker in standards_text or marker in recommendation_text for marker in review_markers):
@@ -141,6 +158,11 @@ def infer_recommended_action(
     grounding_strength: str,
     interpretation_basis: str,
 ) -> str:
+    """
+    Infers the recommended action (rework, repair, scrap, engineering_review, document_and_review)
+    based on the presence of specific markers in the recommendation text, as well as the 
+    acceptability status, grounding strength, and interpretation basis.
+    """
     recommendation_text = recommendation.lower()
 
     if grounding_strength == "weak" or interpretation_basis == "related_defect":

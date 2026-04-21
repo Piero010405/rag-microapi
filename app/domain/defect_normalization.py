@@ -113,6 +113,10 @@ DEFECT_NORMALIZATION = {
 
 
 def normalize_defect_class(defect_class: str) -> dict:
+    """
+    Normalizes the given defect class name to a standardized format based on the
+    DEFECT_NORMALIZATION mapping.
+    """
     key = defect_class.strip().lower().replace(" ", "_")
     return DEFECT_NORMALIZATION.get(
         key,

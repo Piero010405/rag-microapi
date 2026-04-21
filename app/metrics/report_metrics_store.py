@@ -85,7 +85,9 @@ def compute_report_metrics(records: list[dict]) -> dict:
     acceptability_counter = Counter(r.get("acceptability_status", "unknown") for r in records)
     action_counter = Counter(r.get("recommended_action", "unknown") for r in records)
 
-    latencies = [r.get("latency_ms", 0) for r in records if isinstance(r.get("latency_ms", 0), (int, float))]
+    latencies = [r.get("latency_ms", 0) for r in records if isinstance(
+        r.get("latency_ms", 0), (int, float)
+    )]
     avg_latency = sum(latencies) / len(latencies) if latencies else 0
     min_latency = min(latencies) if latencies else 0
     max_latency = max(latencies) if latencies else 0

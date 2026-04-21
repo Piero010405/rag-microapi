@@ -13,7 +13,8 @@ from collections import Counter
 
 def aggregate_detection_payload(detections: list[dict]) -> dict:
     """
-    Agregate a list of defect detections into a summarized report format. Each detection in the list should be a dictionary containing at least the following keys:
+    Agregate a list of defect detections into a summarized report format. Each detection in the 
+    list should be a dictionary containing at least the following keys:
     - "defect_class": The class of the defect (e.g., "short_circuit", "spur", etc.).
     - "confidence": A numerical value representing the confidence level of the detection
     - "area_mm2": A numerical value representing the area of the detected defect in square 

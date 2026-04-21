@@ -11,10 +11,18 @@ SOURCE_STANDARD_MAP = {
     "ipc-a-6010.pdf": "IPC-A-610F",
     "[1] IPC-A-600M - Acceptability of Printed Boards.pdf": "IPC-A-600M",
     "ipc-6012f.pdf": "IPC-6012F",
-    "[3] IPC-6013B - Qualification and Performance Specification for Flexible Printed Boards.pdf": "IPC-6013B",
-    "[2] NASA Workshop G - Printed Circuit Board Inspection and Quality Control.pdf": "NASA Workshop G",
-    "[5] GSFC-STD-8001 - Standard Quality Assurance Requirements for Printed Circuit Boards.pdf": "GSFC-STD-8001",
-    "[6] NASA-STD-8739.6B - Implementation Requirements for NASA Workmanship Standards.pdf": "NASA-STD-8739.6B",
+    "[3] IPC-6013B - Qualification and Performance Specification for Flexible Printed Boards.pdf": (
+        "IPC-6013B"
+    ),
+    "[2] NASA Workshop G - Printed Circuit Board Inspection and Quality Control.pdf": (
+        "NASA Workshop G"
+    ),
+    "[5] GSFC-STD-8001 - Standard Quality Assurance Requirements for Printed Circuit Boards.pdf": (
+        "GSFC-STD-8001"
+    ),
+    "[6] NASA-STD-8739.6B - Implementation Requirements for NASA Workmanship Standards.pdf": (
+        "NASA-STD-8739.6B"
+    ),
 }
 
 
@@ -23,10 +31,10 @@ def infer_applicable_standard_from_sources(
     recommended_standard_target: str | None = None,
 ) -> str:
     """
-    Infer the applicable standard from a list of sources. If a recommended standard target is provided,
-    it will be returned directly. Otherwise, the function will analyze the sources to determine the most
-    frequently occurring standardized name based on the SOURCE_STANDARD_MAP. If no sources are 
-    provided or if none of the sources match the mapping, it will return "unknown".
+    Infer the applicable standard from a list of sources. If a recommended standard target is 
+    provided, it will be returned directly. Otherwise, the function will analyze the sources to 
+    determine the most frequently occurring standardized name based on the SOURCE_STANDARD_MAP. If 
+    no sources are provided or if none of the sources match the mapping, it will return "unknown".
     """
     if recommended_standard_target:
         return recommended_standard_target

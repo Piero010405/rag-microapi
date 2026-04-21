@@ -12,7 +12,9 @@ DEFECT_KNOWLEDGE = {
         "ipc_basis": "Nonconforming",
         "derived_severity": "critical",
         "description": "Unintended electrical connection between conductors.",
-        "engineering_justification": "Violates minimum electrical spacing and may cause direct functional failure.",
+        "engineering_justification": (
+            "Violates minimum electrical spacing and may cause direct functional failure."
+        ),
         "query_aliases": [
             "short circuit",
             "electrical short",
@@ -28,7 +30,9 @@ DEFECT_KNOWLEDGE = {
         "ipc_basis": "Acceptable → Nonconforming",
         "derived_severity": "medium",
         "description": "Thin copper protrusion extending from a conductor.",
-        "engineering_justification": "May reduce spacing and become critical depending on proximity to adjacent conductors.",
+        "engineering_justification": (
+            "May reduce spacing and become critical depending on proximity to adjacent conductors."
+        ),
         "query_aliases": [
             "spur",
             "conductive projection",
@@ -44,7 +48,9 @@ DEFECT_KNOWLEDGE = {
         "ipc_basis": "Process Indicator → Nonconforming",
         "derived_severity": "medium",
         "description": "Unwanted isolated copper remaining after etching.",
-        "engineering_justification": "Risk depends on size and proximity to active conductive features.",
+        "engineering_justification": (
+            "Risk depends on size and proximity to active conductive features."
+        ),
         "query_aliases": [
             "spurious copper",
             "residual copper",
@@ -60,7 +66,9 @@ DEFECT_KNOWLEDGE = {
         "ipc_basis": "Nonconforming",
         "derived_severity": "critical",
         "description": "Break in the intended conductive path.",
-        "engineering_justification": "Causes loss of electrical continuity and direct functional failure.",
+        "engineering_justification": (
+            "Causes loss of electrical continuity and direct functional failure."
+        ),
         "query_aliases": [
             "open circuit",
             "electrical open",
@@ -92,7 +100,9 @@ DEFECT_KNOWLEDGE = {
         "ipc_basis": "Nonconforming (Class-dependent)",
         "derived_severity": "high",
         "description": "Hole not fully surrounded by copper annular ring.",
-        "engineering_justification": "Weakens mechanical/electrical reliability of plated holes and vias.",
+        "engineering_justification": (
+            "Weakens mechanical/electrical reliability of plated holes and vias."
+        ),
         "query_aliases": [
             "hole breakout",
             "annular ring breakout",
@@ -107,7 +117,9 @@ DEFECT_KNOWLEDGE = {
         "ipc_basis": "Process Indicator",
         "derived_severity": "low",
         "description": "Surface damage affecting the conductor finish or top layer.",
-        "engineering_justification": "Often cosmetic unless it significantly reduces thickness or exposes base material.",
+        "engineering_justification": (
+            "Often cosmetic unless it significantly reduces thickness or exposes base material."
+        ),
         "query_aliases": [
             "conductor scratch",
             "scratch on conductor",
@@ -122,7 +134,9 @@ DEFECT_KNOWLEDGE = {
         "ipc_basis": "Nonconforming (if conductive)",
         "derived_severity": "high",
         "description": "Foreign material present on or near a conductive feature.",
-        "engineering_justification": "May induce bridging, corrosion, or unintended conductive paths.",
+        "engineering_justification": (
+            "May induce bridging, corrosion, or unintended conductive paths."
+        ),
         "query_aliases": [
             "foreign object conductor",
             "conductive contamination",
@@ -137,7 +151,9 @@ DEFECT_KNOWLEDGE = {
         "ipc_basis": "Acceptable → Nonconforming",
         "derived_severity": "low",
         "description": "Foreign inclusion embedded in the base material.",
-        "engineering_justification": "Impact depends on size, transparency, and distance to conductive features.",
+        "engineering_justification": (
+            "Impact depends on size, transparency, and distance to conductive features."
+        ),
         "query_aliases": [
             "foreign inclusion base material",
             "subsurface inclusion",
