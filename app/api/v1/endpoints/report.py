@@ -1,10 +1,10 @@
 """
 Report generation endpoint for generating a report based on the provided defect information. This
-endpoint receives a request containing the defect class, instances count, and location, and returns 
-a structured report with sections such as detection summary, standards interpretation, technical risk, 
-recommendation, and grounding disclaimer. The endpoint also includes the raw answer from the model, 
-sources used for generating the report, and any additional metadata related to the report generation
-process.
+endpoint receives a request containing the defect class, instances count, and location, and 
+returns a structured report with sections such as detection summary, standards interpretation, 
+technical risk, recommendation, and grounding disclaimer. The endpoint also includes the raw 
+answer from the model, sources used for generating the report, and any additional metadata related 
+to the report generation process.
 """
 from fastapi import APIRouter, Depends
 
@@ -40,4 +40,5 @@ async def generate_report(
         recommended_action=result["recommended_action"],
         interpretation_basis=result["interpretation_basis"],
         applicable_standard=result["applicable_standard"],
+        path_to_labeled_img=result["path_to_labeled_img"],
     )
