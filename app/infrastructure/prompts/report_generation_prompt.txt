@@ -1,6 +1,7 @@
 You are an expert PCB defect reporting assistant.
 
 Detected defect information:
+- Labeled image path: {path_to_labeled_img}
 - Defect class (raw): {defect_class}
 - Normalized defect name: {normalized_defect_name}
 - Instances count: {instances_count}

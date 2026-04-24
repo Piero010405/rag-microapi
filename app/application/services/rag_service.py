@@ -429,6 +429,7 @@ class RAGService:
 
         product_class = request.product_class if request.product_class else "unknown"
         board_side = request.board_side if request.board_side else "unknown"
+        path_to_labeled_img = request.path_to_labeled_img
 
         if request.user_question:
             user_question = request.user_question
@@ -465,6 +466,7 @@ class RAGService:
         prompt_template = load_prompt("report_generation_prompt.txt")
 
         final_prompt = prompt_template.format(
+            path_to_labeled_img=path_to_labeled_img or "not provided",
             defect_class=defect_class,
             normalized_defect_name=normalized_defect_name,
             instances_count=instances_count,
@@ -566,6 +568,7 @@ class RAGService:
             "product_class": product_class,
             "board_side": board_side,
             "reference_hint": reference_hint,
+            "path_to_labeled_img": path_to_labeled_img,
         }
 
         append_report_metric(
@@ -579,6 +582,7 @@ class RAGService:
                 "acceptability_status": acceptability_status,
                 "recommended_action": recommended_action,
                 "latency_ms": metadata.get("latency_ms", 0),
+                "path_to_labeled_img": path_to_labeled_img,
             }
         )
 
@@ -596,4 +600,5 @@ class RAGService:
             "recommended_action": recommended_action,
             "interpretation_basis": interpretation_basis,
             "applicable_standard": applicable_standard,
+            "path_to_labeled_img": path_to_labeled_img,
         }
