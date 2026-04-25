@@ -34,6 +34,7 @@ from app.utils.report_parser import parse_report_sections
 from app.metrics.report_metrics_store import append_report_metric
 from app.domain.defect_knowledge import get_defect_knowledge
 from app.utils.report_aggregation import aggregate_detection_payload
+from app.metrics.ragas_dataset_store import append_ragas_sample
 
 class RAGService:
     """
@@ -177,6 +178,27 @@ class RAGService:
             top_k=retrieve_response.metadata.top_k,
             score_threshold=retrieve_response.metadata.score_threshold,
             latency_ms=total_timer.elapsed_ms(),
+        )
+
+        append_ragas_sample(
+            question=query,
+            contexts=[
+                chunk.text
+                for chunk in retrieve_response.retrieved_chunks
+                if getattr(chunk, "text", None)
+            ],
+            answer=answer,
+            ground_truth=None,
+            metadata={
+                "endpoint": "/rag/query",
+                "sources": [
+                    source.model_dump() if hasattr(source, "model_dump") else source
+                    for source in sources
+                ],
+                "top_k": retrieve_response.metadata.top_k,
+                "score_threshold": retrieve_response.metadata.score_threshold,
+                "latency_ms": metadata.latency_ms,
+            },
         )
 
         return QueryResponse(
@@ -584,6 +606,38 @@ class RAGService:
                 "latency_ms": metadata.get("latency_ms", 0),
                 "path_to_labeled_img": path_to_labeled_img,
             }
+        )
+
+        ragas_contexts = [
+            chunk.text
+            for chunk in retrieved_chunks
+            if getattr(chunk, "text", None)
+        ]
+
+        append_ragas_sample(
+            question=user_question,
+            contexts=ragas_contexts,
+            answer=report_text,
+            ground_truth=None,
+            metadata={
+                "endpoint": "/report/generate",
+                "defect_class": defect_class,
+                "normalized_defect_name": normalized_defect_name,
+                "recommended_standard_target": recommended_standard_target,
+                "applicable_standard": applicable_standard,
+                "grounding_strength": grounding_strength,
+                "interpretation_basis": interpretation_basis,
+                "acceptability_status": acceptability_status,
+                "recommended_action": recommended_action,
+                "path_to_labeled_img": path_to_labeled_img,
+                "reference_hint": reference_hint,
+                "report_retrieval_queries": retrieval_queries,
+                "latency_ms": metadata["latency_ms"],
+                "sources": [
+                    source.model_dump() if hasattr(source, "model_dump") else source
+                    for source in sources
+                ],
+            },
         )
 
         return {

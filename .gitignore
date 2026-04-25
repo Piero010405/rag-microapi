@@ -151,9 +151,6 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
-# Metrics
-data/metrics/
-
 # mkdocs documentation
 /site
 
