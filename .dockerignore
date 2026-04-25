@@ -11,4 +11,5 @@ venv/
 .vscode/
 rag_microapi.egg-info/
 data/metrics/*.jsonl
+data/ragas/*.json
 tests/
