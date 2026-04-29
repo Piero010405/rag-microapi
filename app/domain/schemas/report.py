@@ -24,10 +24,10 @@ class ReportGenerationRequest(BaseModel):
     """
     path_to_labeled_img: str | None = None
     detections: list[DetectionInstance] = Field(min_length=1)
-    user_question: str | None = None
     standard_target: str | None = None
     product_class: str | None = None
     board_side: str | None = None
+    user_question: str | None = None
 
 
 class ReportSections(BaseModel):
@@ -41,9 +41,9 @@ class ReportSections(BaseModel):
     grounding_disclaimer: str
 
 
-class ReportGenerationResponse(BaseModel):
+class SingleClassReportResult(BaseModel):
     """
-    Report generation response schema
+    Single class report result schema
     """
     report: ReportSections
     report_text: str
@@ -59,3 +59,30 @@ class ReportGenerationResponse(BaseModel):
     interpretation_basis: str
     applicable_standard: str
     path_to_labeled_img: str | None = None
+
+
+class ClassReportItem(BaseModel):
+    """
+    Class report item schema
+    """
+    defect_class: str
+    instances_count: int
+    result: SingleClassReportResult
+
+
+class ReportSummary(BaseModel):
+    """
+    Report summary schema
+    """
+    total_detections: int
+    unique_defect_classes: int
+    classes: list[str]
+
+
+class ReportGenerationResponse(BaseModel):
+    """
+    Report generation response schema
+    """
+    path_to_labeled_img: str | None = None
+    summary: ReportSummary
+    class_reports: list[ClassReportItem]

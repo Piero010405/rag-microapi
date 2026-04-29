@@ -33,7 +33,10 @@ from app.domain.schemas.report import ReportSections
 from app.utils.report_parser import parse_report_sections
 from app.metrics.report_metrics_store import append_report_metric
 from app.domain.defect_knowledge import get_defect_knowledge
-from app.utils.report_aggregation import aggregate_detection_payload
+from app.utils.report_aggregation import (
+    aggregate_detection_payload,
+    group_detections_by_class,
+)
 from app.metrics.ragas_dataset_store import append_ragas_sample
 
 class RAGService:
@@ -415,15 +418,50 @@ class RAGService:
 
     async def generate_report(self, request):
         """
-        Generates a comprehensive report based on the defect detection results and the relevant
-        standards. The method aggregates the detection payload, retrieves relevant information 
-        from the vector database using multiple queries, constructs a detailed prompt for the 
-        Gemini language model, and generates a structured report. It also infers the product 
-        class and board side from the detection payload.
+        Generates one or more class-specific reports from a detection payload.
+
+        If the payload contains a single defect class, the response still follows the
+        unified multi-class structure with one item in class_reports.
+
+        If the payload contains multiple defect classes, detections are grouped by
+        defect_class and a separate RAG report is generated for each class.
         """
-        aggregated = aggregate_detection_payload(
-            [d.model_dump() for d in request.detections]
-        )
+        detections = [d.model_dump() for d in request.detections]
+        grouped_detections = group_detections_by_class(detections)
+
+        class_reports = []
+
+        for defect_class, class_detections in grouped_detections.items():
+            single_result = await self._generate_single_class_report(
+                request=request,
+                detections=class_detections,
+            )
+
+            class_reports.append(
+                {
+                    "defect_class": defect_class,
+                    "instances_count": len(class_detections),
+                    "result": single_result,
+                }
+            )
+
+        return {
+            "path_to_labeled_img": request.path_to_labeled_img,
+            "summary": {
+                "total_detections": len(detections),
+                "unique_defect_classes": len(grouped_detections),
+                "classes": list(grouped_detections.keys()),
+            },
+            "class_reports": class_reports,
+        }
+
+    async def _generate_single_class_report(self, request, detections: list[dict]):
+        """
+        Generates a report for detections belonging to a single defect class.
+        This preserves the original report-generation logic, but receives already
+        grouped detections instead of the full mixed-class payload.
+        """
+        aggregated = aggregate_detection_payload(detections)
 
         defect_class = aggregated["defect_class"]
         instances_count = aggregated["instances_count"]
@@ -457,8 +495,9 @@ class RAGService:
             user_question = request.user_question
         else:
             user_question = (
-                f"What does {recommended_standard_target} indicate about this defect condition, "
-                f"its acceptability, technical significance, and recommended disposition?"
+                f"What does {recommended_standard_target} indicate about this "
+                f"{normalized_defect_name} defect condition, its acceptability, "
+                f"technical significance, and recommended disposition?"
             )
 
         started_at = time.perf_counter()
@@ -591,6 +630,8 @@ class RAGService:
             "board_side": board_side,
             "reference_hint": reference_hint,
             "path_to_labeled_img": path_to_labeled_img,
+            "grouped_defect_class": defect_class,
+            "grouped_instances_count": instances_count,
         }
 
         append_report_metric(

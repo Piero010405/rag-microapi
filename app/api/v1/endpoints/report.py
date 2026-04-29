@@ -20,25 +20,7 @@ async def generate_report(
     rag_service=Depends(get_rag_service),
 ):
     """
-    Endpoint for generating a report based on the provided defect information. It processes the 
-    input data and returns a structured report with various sections and metadata related to 
-    the analysis of the defect.
+    Generate a report based on the provided defect information.
     """
     result = await rag_service.generate_report(request)
-
-    return ReportGenerationResponse(
-        report=result["report"],
-        report_text=result["report_text"],
-        raw_answer=result["raw_answer"],
-        sources=result["sources"],
-        metadata=result["metadata"],
-        normalized_defect_name=result["normalized_defect_name"],
-        recommended_standard_target=result["recommended_standard_target"],
-        inspection_scope=result["inspection_scope"],
-        grounding_strength=result["grounding_strength"],
-        acceptability_status=result["acceptability_status"],
-        recommended_action=result["recommended_action"],
-        interpretation_basis=result["interpretation_basis"],
-        applicable_standard=result["applicable_standard"],
-        path_to_labeled_img=result["path_to_labeled_img"],
-    )
+    return ReportGenerationResponse(**result)
